@@ -16,7 +16,7 @@ MY_MENU PrintMenu() {
 
 void EventLoopRun() {
 
-	int (*functionArray[6])(void) = { Search, Insert, Update, Delete, Print, FilePrint };
+	int (*functionArray[6])(void) = { Search, Insert, Update, Delete, PrintNode, PrintFile };
 
 	MY_MENU menu = 0;
 
@@ -156,10 +156,10 @@ void Delete(void) {
 	}
 }
 
-void Print(void) {
+void PrintNode(void) {
 	PrintList();
 }
 
-void FilePrint(void) {
+void PrintFile(void) {
 	ReadFromFile();
 }
