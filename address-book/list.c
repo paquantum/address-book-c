@@ -5,8 +5,8 @@
 #include "list.h"
 #include "fileIO.h"
 
-USERDATA g_HeadNode = { "__Dummy Head__" };
-USERDATA g_TailNode = { "__Dummy Tail__" };
+USERDATA g_HeadNode = { "__HeadNode__" };
+USERDATA g_TailNode = { "__TailNode__" };
 
 USERDATA* SearchByName(const char* pszName) {
 	FILE* fp = NULL;
@@ -36,34 +36,37 @@ USERDATA** SearchByNames(const char* pszName) {
 		puts("ERROR: Not Found File");
 		return NULL;
 	}
+
+	// 검색 시 해당 조건에 맞는 사람만 보여주기 위해
+	// 노드를 한 번 비우고 검색 내용을 추가
 	ReleaseList();
 
 	USERDATA* userLists = NULL;
 	USERDATA user = { 0 };	
-	int cnt = 0;
+	int offset = 0;
 	while (fread(&user, sizeof(USERDATA), 1, fp) > 0) {
 		if (strcmp(user.name, pszName) == 0) {
 			AddNewNode(user.name, user.address, user.phone, user.active);
-			cnt++;
+			offset++;
 		}
 		memset(&user, 0, sizeof(user));
 	}
 
 	fclose(fp);
 
-	USERDATA** aList = malloc(sizeof(USERDATA*) * cnt);
-	memset(aList, 0, sizeof(USERDATA*) * cnt);
+	USERDATA** aList = malloc(sizeof(USERDATA*) * offset);
+	memset(aList, 0, sizeof(USERDATA*) * offset);
 	USERDATA* pTmp = g_HeadNode.pNext;
-	for (int i = 0; i < cnt; i++) {
+	for (int i = 0; i < offset; i++) {
 		aList[i] = pTmp;
 		pTmp->pNext;
 	}
 	
-	if (cnt > 0) return aList;
+	if (offset > 0) return aList;
 	else return NULL;
 }
 
-USERDATA* SearchByPhone(const char* pszPhone, int* fpPos) {
+USERDATA* SearchByPhone(const char* pszPhone, int* offset) {
 	FILE* fp = NULL;
 	fopen_s(&fp, "user_info.dat", "rb");
 	if (fp == NULL) {
@@ -71,11 +74,14 @@ USERDATA* SearchByPhone(const char* pszPhone, int* fpPos) {
 		return NULL;
 	}
 
+	ReleaseList();
+
 	USERDATA user = { 0 };
 	while (fread(&user, sizeof(USERDATA), 1, fp) > 0) {
-		if (fpPos != NULL) (*fpPos)++;
+		if (offset != NULL) (*offset)++;
 		if (strncmp(pszPhone, user.phone, strlen(pszPhone)) == 0) {
 			AddNewNode(user.name, user.address, user.phone, user.active);
+			// 리턴 값때문에 추가
 			USERDATA* pTmp = g_HeadNode.pNext;
 			while (pTmp != NULL) {
 				if (strncmp(pTmp->phone, pszPhone, strlen(pszPhone)) == 0) {
@@ -92,8 +98,8 @@ USERDATA* SearchByPhone(const char* pszPhone, int* fpPos) {
 	return NULL;
 }
 
-USERDATA* SearchByNameAndPhone(const char* pszName, const char* pszPhone, int* fpPos) {
-	USERDATA* pTmp = SearchByPhone(pszPhone, fpPos);
+USERDATA* SearchByNameAndPhone(const char* pszName, const char* pszPhone, int* offset) {
+	USERDATA* pTmp = SearchByPhone(pszPhone, offset);
 	if (pTmp == NULL) return NULL;
 	if (strcmp(pTmp->name, pszName) == 0) return pTmp;
 	return NULL;
@@ -101,7 +107,7 @@ USERDATA* SearchByNameAndPhone(const char* pszName, const char* pszPhone, int* f
 
 void SaveToFile(const char* pszName, const char* pszAddress, const char* pszPhone, const char* pszActive) {
 	FILE* fp = NULL;
-	fopen_s(&fp, "user_info2.dat", "ab");
+	fopen_s(&fp, "user_info.dat", "ab");
 	if (fp == NULL) {
 		puts("ERROR: Not Found File to SaveToFile");
 		return;
@@ -118,15 +124,16 @@ void SaveToFile(const char* pszName, const char* pszAddress, const char* pszPhon
 	fclose(fp);
 }
 
-void UpdateToFile(const char* pszName, const char* pszAddress, const char* pszPhone, const char* pszActive, USERDATA* pTmp, int fpPos) {
+void UpdateToFile(const char* pszName, const char* pszAddress, const char* pszPhone, const char* pszActive, USERDATA* pTmp, int offset) {
 	FILE* fp = NULL;
 	fopen_s(&fp, "user_info.dat", "rb+");
 	if (fp == NULL) {
 		puts("ERROR: Not Found File to UpdateToFile");
 		return;
 	}
-	printf("fpPos: %d\n", fpPos);
-	fseek(fp, sizeof(USERDATA) * fpPos, SEEK_SET);
+
+	//printf("offset: %d\n", offset);
+	fseek(fp, sizeof(USERDATA) * offset, SEEK_SET);
 	USERDATA user = { 0 };
 	strcpy_s(user.name, sizeof(user.name), pszName);
 	strcpy_s(user.address, sizeof(user.address), pszAddress);
@@ -145,21 +152,22 @@ void UpdateToFile(const char* pszName, const char* pszAddress, const char* pszPh
 	AddNewNode(pszName, pszAddress, pszPhone, pszActive);
 }
 
-USERDATA* SearchToRemove(const char* pszPhone, int *fpPos) {
-	
-	USERDATA* pTmp = SearchByPhone(pszPhone, fpPos);
+USERDATA* SearchToRemove(const char* pszPhone, int *offset) {
+	USERDATA* pTmp = SearchByPhone(pszPhone, offset);
 	if (pTmp == NULL) return NULL;
 	return pTmp;
 }
 
-void RemoveFromFile(USERDATA* pTmp, int fpPos) {
+void RemoveFromFile(USERDATA* pTmp, int offset) {
 	FILE* fp = NULL;
 	fopen_s(&fp, "user_info.dat", "rb+");
 	if (fp == NULL) {
 		puts("ERROR: Not Found File to RemoveFromFile");
 		return;
 	}
-	fseek(fp, sizeof(USERDATA) * fpPos, SEEK_SET);
+
+	// 해당 사용자 위치에서 active만 0으로 덮어씌우기
+	fseek(fp, sizeof(USERDATA) * offset, SEEK_SET);
 	USERDATA user = { 0 };
 	strcpy_s(user.name, sizeof(user.name), pTmp->name);
 	strcpy_s(user.address, sizeof(user.address), pTmp->address);
@@ -169,6 +177,7 @@ void RemoveFromFile(USERDATA* pTmp, int fpPos) {
 
 	fclose(fp);
 	ReleaseList();
+
 	AddNewNode(user.name, user.address, user.phone, user.active);
 	printf("%s, %s, %s, %s 사용자의 정보가 삭제됐습니다.\n", user.name, user.address, user.phone, user.active);
 }
@@ -184,6 +193,10 @@ int ValidationPhone(const char* pszPhone) {
 	USERDATA user = { 0 };
 	while (fread(&user, sizeof(USERDATA), 1, fp) > 0) {
 		if (strncmp(pszPhone, user.phone, strlen(pszPhone)) == 0) {
+			if (user.active[0] == '0') {
+				fclose(fp);
+				return 0;
+			}
 			fclose(fp);
 			return 1;
 		}
