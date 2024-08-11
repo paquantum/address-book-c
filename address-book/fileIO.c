@@ -14,11 +14,20 @@ int ReadFromFile() {
 
 	USERDATA user = { 0 };
 	int cnt = 0;
-	while (fread(&user, sizeof(USERDATA), 1, fp) > 0) {
+	
+	// 개발 단계에서 데이터 일부만 보이도록
+	for (int i = 0; i < 100; i++) {
+		fread(&user, sizeof(USERDATA), 1, fp);
 		printf("name: %s, address: %s, phone: %s, active: %s", user.name, user.address, user.phone, user.active);
 		memset(&user, 0, sizeof(user));
 		cnt++;
 	}
+
+	/*while (fread(&user, sizeof(USERDATA), 1, fp) > 0) {
+		printf("name: %s, address: %s, phone: %s, active: %s", user.name, user.address, user.phone, user.active);
+		memset(&user, 0, sizeof(user));
+		cnt++;
+	}*/
 	printf("\n");
 	
 	fclose(fp);
